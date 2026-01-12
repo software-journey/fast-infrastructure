@@ -382,7 +382,7 @@ We welcome contributions! Here’s how you can help:
 
 ### Learning Materials
 
-- [Original Article on Dev.to](https://www.google.com)
+- [Original Article on Dev.to](https://dev.to/the-software-s-journey/fast-infrastructure-understanding-crossplane-like-a-fast-food-restaurant-1ikk)
 - [Crossplane Training Course](https://www.upbound.io/training)
 - [Crossplane Community Meetings](https://github.com/crossplane/crossplane#get-involved)
 

@@ -4,7 +4,7 @@
 
 Welcome to the companion repository for the article **“I’ll Have a Kubernetes Cluster with a Side of SQL Database, Please: Understanding Crossplane”**
 
-[![Read on Dev.to](https://img.shields.io/badge/Read%20on-Dev.to-0A0A0A?style=for-the-badge&logo=dev.to&logoColor=white)](https://www.google.com)
+[![Read on Dev.to](https://img.shields.io/badge/Read%20on-Dev.to-0A0A0A?style=for-the-badge&logo=dev.to&logoColor=white)](https://dev.to/the-software-s-journey/fast-infrastructure-understanding-crossplane-like-a-fast-food-restaurant-1ikk)
 
 ## 📖 About This Repository
 

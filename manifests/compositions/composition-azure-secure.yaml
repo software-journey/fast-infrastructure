@@ -1,0 +1,347 @@
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: developercombo.azure.secure.example.com
+  labels:
+    provider: azure
+    combo: developer
+    environment: production
+    security: enhanced
+spec:
+  compositeTypeRef:
+    apiVersion: example.com/v1alpha1
+    kind: XDeveloperCombo
+  
+  mode: Pipeline
+  
+  pipeline:
+  - step: patch-and-transform
+    functionRef:
+      name: function-patch-and-transform
+    input:
+      apiVersion: pt.fn.crossplane.io/v1beta1
+      kind: Resources
+      resources:
+      
+      # Resource Group
+      - name: resourcegroup
+        base:
+          apiVersion: azure.upbound.io/v1beta1
+          kind: ResourceGroup
+          spec:
+            forProvider:
+              location: westeurope
+              tags:
+                managed-by: crossplane
+                component: fast-infrastructure
+                security-level: enhanced
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+          transforms:
+          - type: string
+            string:
+              fmt: "rg-secure-%s"
+              type: Format
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.location
+          toFieldPath: spec.forProvider.location
+        - type: ToCompositeFieldPath
+          fromFieldPath: metadata.annotations[crossplane.io/external-name]
+          toFieldPath: status.resourceGroupName
+      
+      # Virtual Network with Network Security Group
+      - name: network
+        base:
+          apiVersion: network.azure.upbound.io/v1beta1
+          kind: VirtualNetwork
+          spec:
+            forProvider:
+              location: westeurope
+              resourceGroupNameSelector:
+                matchControllerRef: true
+              addressSpace:
+              - 10.0.0.0/16
+              tags:
+                Name: developer-combo-vnet-secure
+                security: enhanced
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.location
+          toFieldPath: spec.forProvider.location
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+          transforms:
+          - type: string
+            string:
+              fmt: "vnet-secure-%s"
+              type: Format
+        readinessChecks:
+        - type: MatchString
+          fieldPath: status.atProvider.provisioningState
+          matchString: "Succeeded"
+      
+      # Network Security Group for Database Subnet
+      - name: nsg-database
+        base:
+          apiVersion: network.azure.upbound.io/v1beta1
+          kind: SecurityGroup
+          spec:
+            forProvider:
+              location: westeurope
+              resourceGroupNameSelector:
+                matchControllerRef: true
+              securityRule:
+              - name: AllowPostgreSQL
+                priority: 100
+                direction: Inbound
+                access: Allow
+                protocol: Tcp
+                sourcePortRange: "*"
+                destinationPortRange: "5432"
+                sourceAddressPrefix: "10.0.0.0/16"
+                destinationAddressPrefix: "*"
+              - name: DenyAllInbound
+                priority: 4096
+                direction: Inbound
+                access: Deny
+                protocol: "*"
+                sourcePortRange: "*"
+                destinationPortRange: "*"
+                sourceAddressPrefix: "*"
+                destinationAddressPrefix: "*"
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.location
+          toFieldPath: spec.forProvider.location
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+          transforms:
+          - type: string
+            string:
+              fmt: "nsg-db-%s"
+              type: Format
+      
+      # Database Subnet with NSG
+      - name: subnet-database
+        base:
+          apiVersion: network.azure.upbound.io/v1beta1
+          kind: Subnet
+          spec:
+            forProvider:
+              resourceGroupNameSelector:
+                matchControllerRef: true
+              virtualNetworkNameSelector:
+                matchControllerRef: true
+              addressPrefixes:
+              - 10.0.1.0/24
+              delegation:
+              - name: fs
+                serviceDelegation:
+                - name: Microsoft.DBforPostgreSQL/flexibleServers
+                  actions:
+                  - Microsoft.Network/virtualNetworks/subnets/join/action
+              serviceEndpoints:
+              - Microsoft.Storage
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+          transforms:
+          - type: string
+            string:
+              fmt: "snet-db-secure-%s"
+              type: Format
+        readinessChecks:
+        - type: MatchString
+          fieldPath: status.atProvider.provisioningState
+          matchString: "Succeeded"
+      
+      # PostgreSQL with Enhanced Security
+      - name: database
+        base:
+          apiVersion: dbforpostgresql.azure.upbound.io/v1beta1
+          kind: FlexibleServer
+          spec:
+            forProvider:
+              location: westeurope
+              resourceGroupNameSelector:
+                matchControllerRef: true
+              administratorLogin: secureadmin
+              administratorPasswordSecretRef:
+                name: db-password
+                namespace: crossplane-system
+                key: password
+              version: "15"
+              storageMb: 65536
+              skuName: GP_Standard_D2s_v3
+              delegatedSubnetIdSelector:
+                matchControllerRef: true
+              # Enhanced security settings
+              geoRedundantBackupEnabled: true
+              highAvailability:
+              - mode: ZoneRedundant
+              zone: "1"
+              backupRetentionDays: 35
+              createMode: Default
+            writeConnectionSecretToRef:
+              namespace: crossplane-system
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.size
+          toFieldPath: spec.forProvider.skuName
+          transforms:
+          - type: map
+            map:
+              small: GP_Standard_D2s_v3
+              medium: GP_Standard_D4s_v3
+              large: GP_Standard_D8s_v3
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.location
+          toFieldPath: spec.forProvider.location
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+          transforms:
+          - type: string
+            string:
+              fmt: "psql-secure-%s"
+              type: Format
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.uid
+          toFieldPath: spec.writeConnectionSecretToRef.name
+          transforms:
+          - type: string
+            string:
+              fmt: "%s-postgresql-secure"
+              type: Format
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.fqdn
+          toFieldPath: status.endpoint
+        readinessChecks:
+        - type: MatchString
+          fieldPath: status.atProvider.state
+          matchString: "Ready"
+      
+      # PostgreSQL Firewall Rules (restrictive)
+      - name: database-firewall
+        base:
+          apiVersion: dbforpostgresql.azure.upbound.io/v1beta1
+          kind: FlexibleServerFirewallRule
+          spec:
+            forProvider:
+              serverIdSelector:
+                matchControllerRef: true
+              startIpAddress: 10.0.0.0
+              endIpAddress: 10.0.255.255
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+          transforms:
+          - type: string
+            string:
+              fmt: "fw-vnet-only-%s"
+              type: Format
+      
+      # Storage Account with Enhanced Security
+      - name: storage
+        base:
+          apiVersion: storage.azure.upbound.io/v1beta1
+          kind: Account
+          spec:
+            forProvider:
+              location: westeurope
+              resourceGroupNameSelector:
+                matchControllerRef: true
+              accountTier: Standard
+              accountReplicationType: GZRS
+              accountKind: StorageV2
+              # Security enhancements
+              enableHttpsTrafficOnly: true
+              minTlsVersion: TLS1_2
+              allowBlobPublicAccess: false
+              networkRules:
+              - defaultAction: Deny
+                bypass:
+                - AzureServices
+                virtualNetworkSubnetIds: []
+              blobProperties:
+              - deleteRetentionPolicy:
+                - days: 7
+                containerDeleteRetentionPolicy:
+                - days: 7
+                versioning:
+                - enabled: true
+              tags:
+                security: enhanced
+                encryption: enabled
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.location
+          toFieldPath: spec.forProvider.location
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+          transforms:
+          - type: string
+            string:
+              fmt: "stsecure%s"
+              type: Format
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.size
+          toFieldPath: spec.forProvider.accountReplicationType
+          transforms:
+          - type: map
+            map:
+              small: GRS
+              medium: GZRS
+              large: GZRS
+        - type: ToCompositeFieldPath
+          fromFieldPath: metadata.annotations[crossplane.io/external-name]
+          toFieldPath: status.storageAccountName
+        readinessChecks:
+        - type: MatchString
+          fieldPath: status.atProvider.provisioningState
+          matchString: "Succeeded"
+      
+      # Key Vault for secrets management
+      - name: keyvault
+        base:
+          apiVersion: keyvault.azure.upbound.io/v1beta1
+          kind: Vault
+          spec:
+            forProvider:
+              location: westeurope
+              resourceGroupNameSelector:
+                matchControllerRef: true
+              tenantId: "" # Will be patched
+              skuName: standard
+              enabledForDiskEncryption: true
+              enabledForDeployment: false
+              enabledForTemplateDeployment: false
+              enableSoftDelete: true
+              softDeleteRetentionDays: 90
+              enablePurgeProtection: true
+              networkAcls:
+              - defaultAction: Deny
+                bypass: AzureServices
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.location
+          toFieldPath: spec.forProvider.location
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+          transforms:
+          - type: string
+            string:
+              fmt: "kv-secure-%s"
+              type: Format
+  
+  publishConnectionDetailsWithStoreConfigRef:
+    name: default

@@ -1,0 +1,287 @@
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: developercombo.azure.example.com
+  labels:
+    provider: azure
+    combo: developer
+    environment: all
+spec:
+  compositeTypeRef:
+    apiVersion: example.com/v1alpha1
+    kind: XDeveloperCombo
+  
+  mode: Pipeline
+  
+  pipeline:
+  - step: patch-and-transform
+    functionRef:
+      name: function-patch-and-transform
+    input:
+      apiVersion: pt.fn.crossplane.io/v1beta1
+      kind: Resources
+      resources:
+      
+      # The "Tray" - Resource Group to hold everything
+      - name: resourcegroup
+        base:
+          apiVersion: azure.upbound.io/v1beta1
+          kind: ResourceGroup
+          spec:
+            forProvider:
+              location: westeurope
+              tags:
+                managed-by: crossplane
+                component: fast-infrastructure
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+          transforms:
+          - type: string
+            string:
+              fmt: "rg-combo-%s"
+              type: Format
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.location
+          toFieldPath: spec.forProvider.location
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.tags
+          toFieldPath: spec.forProvider.tags
+          policy:
+            mergeOptions:
+              appendSlice: false
+              keepMapValues: true
+        - type: ToCompositeFieldPath
+          fromFieldPath: metadata.annotations[crossplane.io/external-name]
+          toFieldPath: status.resourceGroupName
+      
+      # The "Drink" - Virtual Network
+      - name: network
+        base:
+          apiVersion: network.azure.upbound.io/v1beta1
+          kind: VirtualNetwork
+          spec:
+            forProvider:
+              location: westeurope
+              resourceGroupNameSelector:
+                matchControllerRef: true
+              addressSpace:
+              - 10.0.0.0/16
+              tags:
+                Name: developer-combo-vnet
+                managed-by: crossplane
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.location
+          toFieldPath: spec.forProvider.location
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+          transforms:
+          - type: string
+            string:
+              fmt: "vnet-combo-%s"
+              type: Format
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.tags
+          toFieldPath: spec.forProvider.tags
+          policy:
+            mergeOptions:
+              appendSlice: false
+              keepMapValues: true
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.id
+          toFieldPath: status.vnetId
+        readinessChecks:
+        - type: MatchString
+          fieldPath: status.atProvider.provisioningState
+          matchString: "Succeeded"
+      
+      # Subnet for database
+      - name: subnet-database
+        base:
+          apiVersion: network.azure.upbound.io/v1beta1
+          kind: Subnet
+          spec:
+            forProvider:
+              resourceGroupNameSelector:
+                matchControllerRef: true
+              virtualNetworkNameSelector:
+                matchControllerRef: true
+              addressPrefixes:
+              - 10.0.1.0/24
+              delegation:
+              - name: fs
+                serviceDelegation:
+                - name: Microsoft.DBforPostgreSQL/flexibleServers
+                  actions:
+                  - Microsoft.Network/virtualNetworks/subnets/join/action
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+          transforms:
+          - type: string
+            string:
+              fmt: "snet-db-%s"
+              type: Format
+        readinessChecks:
+        - type: MatchString
+          fieldPath: status.atProvider.provisioningState
+          matchString: "Succeeded"
+      
+      # The "Burger" - PostgreSQL Flexible Server Database
+      - name: database
+        base:
+          apiVersion: dbforpostgresql.azure.upbound.io/v1beta1
+          kind: FlexibleServer
+          metadata:
+            annotations:
+              crossplane.io/external-name: developer-combo-db
+          spec:
+            forProvider:
+              location: westeurope
+              resourceGroupNameSelector:
+                matchControllerRef: true
+              administratorLogin: combouser
+              administratorPasswordSecretRef:
+                name: db-password
+                namespace: crossplane-system
+                key: password
+              version: "15"
+              storageMb: 32768
+              skuName: B_Standard_B1ms
+              delegatedSubnetIdSelector:
+                matchControllerRef: true
+              zone: "1"
+            writeConnectionSecretToRef:
+              namespace: crossplane-system
+        patches:
+        # Size-based SKU selection
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.size
+          toFieldPath: spec.forProvider.skuName
+          transforms:
+          - type: map
+            map:
+              small: B_Standard_B1ms
+              medium: GP_Standard_D2s_v3
+              large: GP_Standard_D4s_v3
+        # Size-based storage
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.size
+          toFieldPath: spec.forProvider.storageMb
+          transforms:
+          - type: map
+            map:
+              small: 32768      # 32 GB
+              medium: 131072    # 128 GB
+              large: 524288     # 512 GB
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.location
+          toFieldPath: spec.forProvider.location
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+          transforms:
+          - type: string
+            string:
+              fmt: "psql-%s"
+              type: Format
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.uid
+          toFieldPath: spec.writeConnectionSecretToRef.name
+          transforms:
+          - type: string
+            string:
+              fmt: "%s-postgresql"
+              type: Format
+        # Export endpoint to status
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.fqdn
+          toFieldPath: status.endpoint
+        # Backup configuration
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.enableBackup
+          toFieldPath: spec.forProvider.backupRetentionDays
+          transforms:
+          - type: map
+            map:
+              true: 7
+              false: 7  # Azure minimum
+        readinessChecks:
+        - type: MatchString
+          fieldPath: status.atProvider.state
+          matchString: "Ready"
+        connectionDetails:
+        - type: FromConnectionSecretKey
+          name: username
+          fromConnectionSecretKey: username
+        - type: FromConnectionSecretKey
+          name: password
+          fromConnectionSecretKey: password
+        - type: FromFieldPath
+          name: endpoint
+          fromFieldPath: status.atProvider.fqdn
+      
+      # The "Fries" - Azure Storage Account
+      - name: storage
+        base:
+          apiVersion: storage.azure.upbound.io/v1beta1
+          kind: Account
+          spec:
+            forProvider:
+              location: westeurope
+              resourceGroupNameSelector:
+                matchControllerRef: true
+              accountTier: Standard
+              accountReplicationType: LRS
+              accountKind: StorageV2
+              tags:
+                managed-by: crossplane
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.location
+          toFieldPath: spec.forProvider.location
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+          transforms:
+          - type: string
+            string:
+              fmt: "stcombo%s"
+              type: Format
+          # Storage account names must be lowercase and no hyphens
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.storageSize
+          toFieldPath: spec.forProvider.tags.size
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.tags
+          toFieldPath: spec.forProvider.tags
+          policy:
+            mergeOptions:
+              appendSlice: false
+              keepMapValues: true
+        # Replication based on size
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.size
+          toFieldPath: spec.forProvider.accountReplicationType
+          transforms:
+          - type: map
+            map:
+              small: LRS
+              medium: GRS
+              large: GZRS
+        - type: ToCompositeFieldPath
+          fromFieldPath: metadata.annotations[crossplane.io/external-name]
+          toFieldPath: status.storageAccountName
+        readinessChecks:
+        - type: MatchString
+          fieldPath: status.atProvider.provisioningState
+          matchString: "Succeeded"
+  
+  # Publish connection details
+  publishConnectionDetailsWithStoreConfigRef:
+    name: default

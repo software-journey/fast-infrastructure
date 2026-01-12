@@ -1,0 +1,79 @@
+---
+# Development Environment - The "Kids Meal"
+# Small resources for development and testing
+apiVersion: example.com/v1alpha1
+kind: DeveloperCombo
+metadata:
+  name: myapp-dev
+  namespace: development
+  labels:
+    environment: development
+    app: myapp
+spec:
+  size: small
+  includeDatabase: true
+  storageSize: "10Gi"
+  location: westeurope
+  enableBackup: false
+  enableMonitoring: false
+  tags:
+    environment: dev
+    cost-center: engineering
+    team: platform
+  
+  compositionSelector:
+    matchLabels:
+      provider: azure
+---
+# Staging Environment - The "Regular Meal"
+# Medium resources for pre-production testing
+apiVersion: example.com/v1alpha1
+kind: DeveloperCombo
+metadata:
+  name: myapp-staging
+  namespace: staging
+  labels:
+    environment: staging
+    app: myapp
+spec:
+  size: medium
+  includeDatabase: true
+  storageSize: "50Gi"
+  location: westeurope
+  enableBackup: true
+  enableMonitoring: true
+  tags:
+    environment: staging
+    cost-center: engineering
+    team: platform
+  
+  compositionSelector:
+    matchLabels:
+      provider: azure
+---
+# Production Environment - The "Super Size"
+# Large resources for production workloads
+apiVersion: example.com/v1alpha1
+kind: DeveloperCombo
+metadata:
+  name: myapp-prod
+  namespace: production
+  labels:
+    environment: production
+    app: myapp
+spec:
+  size: large
+  includeDatabase: true
+  storageSize: "500Gi"
+  location: westeurope
+  enableBackup: true
+  enableMonitoring: true
+  tags:
+    environment: production
+    cost-center: engineering
+    team: platform
+    criticality: high
+  
+  compositionSelector:
+    matchLabels:
+      provider: azure

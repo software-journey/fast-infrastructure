@@ -1,0 +1,165 @@
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xdevelopercombo.example.com
+  labels:
+    app: fast-infrastructure
+    component: xrd
+spec:
+  group: example.com
+  names:
+    kind: XDeveloperCombo
+    plural: xdevelopercombo
+  claimNames:
+    kind: DeveloperCombo
+    plural: developercombo
+  
+  versions:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            description: "Specification for the DeveloperCombo - like ordering from a menu"
+            properties:
+              size:
+                type: string
+                description: "Size of your combo: small (dev), medium (staging), or large (production)"
+                enum:
+                - small
+                - medium
+                - large
+                default: medium
+              
+              includeDatabase:
+                type: boolean
+                description: "Want a database with that? (PostgreSQL Flexible Server)"
+                default: true
+              
+              storageSize:
+                type: string
+                description: "Storage account size (e.g., '10Gi', '50Gi', '500Gi')"
+                default: "10Gi"
+                pattern: '^[0-9]+Gi$'
+              
+              location:
+                type: string
+                description: "Azure region for resources (e.g., 'westeurope', 'eastus')"
+                default: westeurope
+                enum:
+                - westeurope
+                - northeurope
+                - eastus
+                - westus
+                - southeastasia
+              
+              enableBackup:
+                type: boolean
+                description: "Enable automatic backups for the database"
+                default: true
+              
+              enableMonitoring:
+                type: boolean
+                description: "Enable Azure Monitor and Log Analytics"
+                default: false
+              
+              tags:
+                type: object
+                description: "Custom tags to apply to all resources"
+                additionalProperties:
+                  type: string
+                default: {}
+            
+            required:
+            - size
+          
+          status:
+            type: object
+            description: "Status of your order - is it ready?"
+            properties:
+              ready:
+                type: boolean
+                description: "Is your infrastructure ready to use?"
+              
+              endpoint:
+                type: string
+                description: "Database connection endpoint (FQDN)"
+              
+              storageAccountName:
+                type: string
+                description: "Name of the created storage account"
+              
+              resourceGroupName:
+                type: string
+                description: "Name of the resource group containing all resources"
+              
+              vnetId:
+                type: string
+                description: "ID of the virtual network"
+              
+              conditions:
+                type: array
+                description: "Detailed status conditions"
+                items:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    status:
+                      type: string
+                    lastTransitionTime:
+                      type: string
+                      format: date-time
+                    reason:
+                      type: string
+                    message:
+                      type: string
+              
+              resourceRefs:
+                type: array
+                description: "References to created managed resources"
+                items:
+                  type: object
+                  properties:
+                    apiVersion:
+                      type: string
+                    kind:
+                      type: string
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+    
+    # Additional printer columns for kubectl output
+    additionalPrinterColumns:
+    - name: SIZE
+      type: string
+      jsonPath: .spec.size
+    - name: DATABASE
+      type: boolean
+      jsonPath: .spec.includeDatabase
+    - name: STORAGE
+      type: string
+      jsonPath: .spec.storageSize
+    - name: READY
+      type: boolean
+      jsonPath: .status.ready
+    - name: ENDPOINT
+      type: string
+      jsonPath: .status.endpoint
+    - name: AGE
+      type: date
+      jsonPath: .metadata.creationTimestamp
+  
+  # Default composition reference
+  defaultCompositionRef:
+    name: developercombo.azure.example.com
+  
+  # Enforce composition selection
+  enforcedCompositionRef:
+    name: developercombo.azure.example.com

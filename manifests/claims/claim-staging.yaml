@@ -1,0 +1,28 @@
+---
+# Staging Environment - The "Regular Meal"
+# Medium resources for pre-production testing
+apiVersion: example.com/v1alpha1
+kind: DeveloperCombo
+metadata:
+  name: myapp-staging
+  namespace: staging
+  labels:
+    environment: staging
+    app: myapp
+    team: platform
+spec:
+  size: medium
+  includeDatabase: true
+  storageSize: "50Gi"
+  location: westeurope
+  enableBackup: true
+  enableMonitoring: true
+  tags:
+    environment: staging
+    cost-center: engineering
+    team: platform
+    project: myapp
+  
+  compositionSelector:
+    matchLabels:
+      provider: azure

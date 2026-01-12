@@ -1,0 +1,13 @@
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-azure-dbforpostgresql
+  labels:
+    provider: azure
+    component: database
+spec:
+  package: xpkg.upbound.io/upbound/provider-azure-dbforpostgresql:v1.3.0
+  packagePullPolicy: IfNotPresent
+  revisionActivationPolicy: Automatic
+  revisionHistoryLimit: 1

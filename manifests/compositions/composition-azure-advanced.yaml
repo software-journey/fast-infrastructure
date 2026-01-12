@@ -1,0 +1,315 @@
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: developercombo.azure.advanced.example.com
+  labels:
+    provider: azure
+    combo: developer
+    environment: all
+    features: advanced
+spec:
+  compositeTypeRef:
+    apiVersion: example.com/v1alpha1
+    kind: XDeveloperCombo
+  
+  mode: Pipeline
+  
+  pipeline:
+  # Step 1: Standard resource creation with patches
+  - step: patch-and-transform
+    functionRef:
+      name: function-patch-and-transform
+    input:
+      apiVersion: pt.fn.crossplane.io/v1beta1
+      kind: Resources
+      resources:
+      
+      # Resource Group
+      - name: resourcegroup
+        base:
+          apiVersion: azure.upbound.io/v1beta1
+          kind: ResourceGroup
+          spec:
+            forProvider:
+              location: westeurope
+              tags:
+                managed-by: crossplane
+                component: fast-infrastructure-advanced
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+          transforms:
+          - type: string
+            string:
+              fmt: "rg-advanced-%s"
+              type: Format
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.location
+          toFieldPath: spec.forProvider.location
+        - type: ToCompositeFieldPath
+          fromFieldPath: metadata.annotations[crossplane.io/external-name]
+          toFieldPath: status.resourceGroupName
+      
+      # Log Analytics Workspace (conditional on enableMonitoring)
+      - name: log-analytics
+        base:
+          apiVersion: operationsmanagement.azure.upbound.io/v1beta1
+          kind: Workspace
+          spec:
+            forProvider:
+              location: westeurope
+              resourceGroupNameSelector:
+                matchControllerRef: true
+              sku: PerGB2018
+              retentionInDays: 30
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.location
+          toFieldPath: spec.forProvider.location
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.size
+          toFieldPath: spec.forProvider.retentionInDays
+          transforms:
+          - type: map
+            map:
+              small: 30
+              medium: 90
+              large: 180
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+          transforms:
+          - type: string
+            string:
+              fmt: "law-%s"
+              type: Format
+      
+      # Virtual Network
+      - name: network
+        base:
+          apiVersion: network.azure.upbound.io/v1beta1
+          kind: VirtualNetwork
+          spec:
+            forProvider:
+              location: westeurope
+              resourceGroupNameSelector:
+                matchControllerRef: true
+              addressSpace:
+              - 10.0.0.0/16
+              tags:
+                Name: developer-combo-vnet-advanced
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.location
+          toFieldPath: spec.forProvider.location
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+          transforms:
+          - type: string
+            string:
+              fmt: "vnet-advanced-%s"
+              type: Format
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.id
+          toFieldPath: status.vnetId
+        readinessChecks:
+        - type: MatchString
+          fieldPath: status.atProvider.provisioningState
+          matchString: "Succeeded"
+      
+      # Database Subnet
+      - name: subnet-database
+        base:
+          apiVersion: network.azure.upbound.io/v1beta1
+          kind: Subnet
+          spec:
+            forProvider:
+              resourceGroupNameSelector:
+                matchControllerRef: true
+              virtualNetworkNameSelector:
+                matchControllerRef: true
+              addressPrefixes:
+              - 10.0.1.0/24
+              delegation:
+              - name: fs
+                serviceDelegation:
+                - name: Microsoft.DBforPostgreSQL/flexibleServers
+                  actions:
+                  - Microsoft.Network/virtualNetworks/subnets/join/action
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+          transforms:
+          - type: string
+            string:
+              fmt: "snet-db-advanced-%s"
+              type: Format
+        readinessChecks:
+        - type: MatchString
+          fieldPath: status.atProvider.provisioningState
+          matchString: "Succeeded"
+      
+      # PostgreSQL with diagnostics
+      - name: database
+        base:
+          apiVersion: dbforpostgresql.azure.upbound.io/v1beta1
+          kind: FlexibleServer
+          spec:
+            forProvider:
+              location: westeurope
+              resourceGroupNameSelector:
+                matchControllerRef: true
+              administratorLogin: advancedadmin
+              administratorPasswordSecretRef:
+                name: db-password
+                namespace: crossplane-system
+                key: password
+              version: "15"
+              storageMb: 65536
+              skuName: GP_Standard_D2s_v3
+              delegatedSubnetIdSelector:
+                matchControllerRef: true
+              zone: "1"
+              backupRetentionDays: 14
+              geoRedundantBackupEnabled: false
+            writeConnectionSecretToRef:
+              namespace: crossplane-system
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.size
+          toFieldPath: spec.forProvider.skuName
+          transforms:
+          - type: map
+            map:
+              small: B_Standard_B1ms
+              medium: GP_Standard_D2s_v3
+              large: GP_Standard_D4s_v3
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.size
+          toFieldPath: spec.forProvider.storageMb
+          transforms:
+          - type: map
+            map:
+              small: 32768
+              medium: 131072
+              large: 524288
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.location
+          toFieldPath: spec.forProvider.location
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+          transforms:
+          - type: string
+            string:
+              fmt: "psql-advanced-%s"
+              type: Format
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.uid
+          toFieldPath: spec.writeConnectionSecretToRef.name
+          transforms:
+          - type: string
+            string:
+              fmt: "%s-postgresql-advanced"
+              type: Format
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.fqdn
+          toFieldPath: status.endpoint
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.enableBackup
+          toFieldPath: spec.forProvider.geoRedundantBackupEnabled
+        readinessChecks:
+        - type: MatchString
+          fieldPath: status.atProvider.state
+          matchString: "Ready"
+      
+      # Storage Account with lifecycle management
+      - name: storage
+        base:
+          apiVersion: storage.azure.upbound.io/v1beta1
+          kind: Account
+          spec:
+            forProvider:
+              location: westeurope
+              resourceGroupNameSelector:
+                matchControllerRef: true
+              accountTier: Standard
+              accountReplicationType: GRS
+              accountKind: StorageV2
+              enableHttpsTrafficOnly: true
+              minTlsVersion: TLS1_2
+              blobProperties:
+              - deleteRetentionPolicy:
+                - days: 7
+              tags:
+                managed-by: crossplane
+                features: advanced
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.location
+          toFieldPath: spec.forProvider.location
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+          transforms:
+          - type: string
+            string:
+              fmt: "stadv%s"
+              type: Format
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.size
+          toFieldPath: spec.forProvider.accountReplicationType
+          transforms:
+          - type: map
+            map:
+              small: LRS
+              medium: GRS
+              large: GZRS
+        - type: ToCompositeFieldPath
+          fromFieldPath: metadata.annotations[crossplane.io/external-name]
+          toFieldPath: status.storageAccountName
+        readinessChecks:
+        - type: MatchString
+          fieldPath: status.atProvider.provisioningState
+          matchString: "Succeeded"
+      
+      # Application Insights (conditional on enableMonitoring)
+      - name: app-insights
+        base:
+          apiVersion: insights.azure.upbound.io/v1beta1
+          kind: ApplicationInsights
+          spec:
+            forProvider:
+              location: westeurope
+              resourceGroupNameSelector:
+                matchControllerRef: true
+              applicationType: web
+              workspaceIdSelector:
+                matchControllerRef: true
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.location
+          toFieldPath: spec.forProvider.location
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+          transforms:
+          - type: string
+            string:
+              fmt: "appi-%s"
+              type: Format
+  
+  # Step 2: Auto-generated tags and labels
+  - step: auto-tag-resources
+    functionRef:
+      name: function-auto-ready
+    input:
+      apiVersion: fn.crossplane.io/v1beta1
+      kind: Input
+  
+  publishConnectionDetailsWithStoreConfigRef:
+    name: default

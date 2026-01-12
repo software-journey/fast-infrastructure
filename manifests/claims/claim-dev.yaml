@@ -1,0 +1,28 @@
+---
+# Development Environment - The "Kids Meal"
+# Small resources for development and testing
+apiVersion: example.com/v1alpha1
+kind: DeveloperCombo
+metadata:
+  name: myapp-dev
+  namespace: development
+  labels:
+    environment: development
+    app: myapp
+    team: platform
+spec:
+  size: small
+  includeDatabase: true
+  storageSize: "10Gi"
+  location: westeurope
+  enableBackup: false
+  enableMonitoring: false
+  tags:
+    environment: dev
+    cost-center: engineering
+    team: platform
+    project: myapp
+  
+  compositionSelector:
+    matchLabels:
+      provider: azure

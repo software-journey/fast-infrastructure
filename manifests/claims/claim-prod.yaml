@@ -1,0 +1,30 @@
+---
+# Production Environment - The "Super Size"
+# Large resources for production workloads
+apiVersion: example.com/v1alpha1
+kind: DeveloperCombo
+metadata:
+  name: myapp-prod
+  namespace: production
+  labels:
+    environment: production
+    app: myapp
+    team: platform
+spec:
+  size: large
+  includeDatabase: true
+  storageSize: "500Gi"
+  location: westeurope
+  enableBackup: true
+  enableMonitoring: true
+  tags:
+    environment: production
+    cost-center: engineering
+    team: platform
+    project: myapp
+    criticality: high
+    backup: enabled
+  
+  compositionSelector:
+    matchLabels:
+      provider: azure

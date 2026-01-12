@@ -422,8 +422,8 @@ This project is licensed under the MIT License - see the <LICENSE> file for deta
 **Willem van Heemstra**
 
 - GitHub: [@vanHeemstraSystems](https://github.com/vanHeemstraSystems)
-- LinkedIn: [Willem van Heemstra](https://www.linkedin.com/in/vanheemstra/)
-- Dev.to: Article - [Fast Infrastructure with Crossplane](https://www.google.com)
+- LinkedIn: [Willem van Heemstra](https://www.linkedin.com/in/wvanheemstra/)
+- Dev.to: Article - [Fast Infrastructure: Understanding Crossplane like a Fast Food Restaurant](https://dev.to/the-software-s-journey/fast-infrastructure-understanding-crossplane-like-a-fast-food-restaurant-1ikk)
 
 Cloud Engineer and Security Domain Expert with 30 years of IT experience, specializing in cloud-native technologies, DevSecOps, and infrastructure automation.
 

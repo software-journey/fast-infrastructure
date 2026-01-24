@@ -11,6 +11,12 @@ metadata:
     app: myapp
     team: platform
 spec:
+  # Crossplane v2: Crossplane-specific machinery lives under spec.crossplane
+  crossplane:
+    # Use the default "basic" recipe (Composition)
+    compositionRef:
+      name: developercombo.azure.example.com
+
   size: small
   includeDatabase: true
   storageSize: "10Gi"
@@ -22,7 +28,3 @@ spec:
     cost-center: engineering
     team: platform
     project: myapp
-  
-  compositionSelector:
-    matchLabels:
-      provider: azure

@@ -45,18 +45,16 @@ Every good restaurant starts with a menu. In Crossplane, the **XRD** is your men
 Here's our "Happy Meal" equivalent - let's call it a `DeveloperCombo`:
 
 ```yaml
-apiVersion: apiextensions.crossplane.io/v1
+apiVersion: apiextensions.crossplane.io/v2
 kind: CompositeResourceDefinition
 metadata:
-  name: xdevelopercombo.example.com
+  name: developercombos.example.com
 spec:
+  scope: Namespaced
   group: example.com
   names:
-    kind: XDeveloperCombo
-    plural: xdevelopercombo
-  claimNames:
     kind: DeveloperCombo
-    plural: developercombo
+    plural: developercombos
   versions:
   - name: v1alpha1
     served: true
@@ -115,7 +113,7 @@ metadata:
 spec:
   compositeTypeRef:
     apiVersion: example.com/v1alpha1
-    kind: XDeveloperCombo
+    kind: DeveloperCombo
   
   mode: Pipeline
   pipeline:
@@ -232,9 +230,9 @@ This Composition is like the kitchen's recipe card. When someone orders a `Devel
 
 Notice the `patches` section? That's like special instructions: "No pickles" or "Extra sauce." Here we're saying: "If they ordered 'medium', make the database a `GP_Standard_D2s_v3`."
 
-## Placing Your Order: The Claim
+## Placing Your Order: The XR (Order Ticket)
 
-Now comes the magic moment. A developer walks up to the counter (their Kubernetes cluster) and places an order:
+Now comes the magic moment. In Crossplane v2 there’s no separate “Claim” object — you place the order by creating the XR directly:
 
 ```yaml
 apiVersion: example.com/v1alpha1
@@ -243,13 +241,12 @@ metadata:
   name: my-awesome-app-infra
   namespace: team-awesome
 spec:
+  crossplane:
+    compositionRef:
+      name: developercombo.azure.example.com
   size: medium
   includeDatabase: true
   storageSize: "50Gi"
-  
-  compositionSelector:
-    matchLabels:
-      provider: azure
 ```
 
 That's it. That's the whole order.
@@ -258,7 +255,7 @@ No Azure CLI. No ARM templates. No Azure AD role juggling. Just: "I'd like a med
 
 ## Behind the Counter: What Happens Next
 
-Here's where Crossplane shows its real magic. When that claim lands:
+Here's where Crossplane shows its real magic. When that XR lands:
 
 1. **The counter staff (Crossplane controller)** receives the order
 2. **Validates it against the menu** (XRD schema)
@@ -269,7 +266,7 @@ Here's where Crossplane shows its real magic. When that claim lands:
    - Azure Provider creates the Storage Account
    - Azure Provider creates the Virtual Network
 5. **Monitors preparation** (reconciliation loops)
-6. **Serves the completed meal** (updates the Claim status)
+6. **Serves the completed meal** (updates the XR status)
 
 All of this happens automatically, continuously, and declaratively.
 
@@ -278,7 +275,7 @@ All of this happens automatically, continuously, and declaratively.
 Want to know if your infrastructure is ready?
 
 ```bash
-kubectl get developercombo -n team-awesome
+kubectl get developercombos -n team-awesome
 ```
 
 ```
@@ -367,10 +364,7 @@ metadata:
 spec:
   compositeTypeRef:
     apiVersion: example.com/v1alpha1
-    kind: XDeveloperCombo
-  
-  publishConnectionDetailsWithStoreConfigRef:
-    name: default
+    kind: DeveloperCombo
   
   revisionActivationPolicy: Automatic
   revisionHistoryLimit: 3
@@ -495,7 +489,7 @@ spec:
 ```
 
 - **Delete**: Take your tray to the trash, clean up everything
-- **Orphan**: Leave the leftovers on the table (keep cloud resources even after deleting the Claim)
+- **Orphan**: Leave the leftovers on the table (keep cloud resources even after deleting the XR)
 
 Useful when you want to delete the Kubernetes object but keep the actual Azure resources.
 
@@ -652,8 +646,8 @@ kubectl apply -f claim.yaml
 - Fix: Check ProviderConfig and Azure subscription quotas
 
 **Issue: "I updated my Composition but nothing changed"**
-- Check: Existing claims use the old `CompositionRevision`
-- Fix: Either set `revisionActivationPolicy: Automatic` or manually update claims
+- Check: Existing XRs may be pinned to an older `CompositionRevision`
+- Fix: Either set `revisionActivationPolicy: Automatic` or update `spec.crossplane.compositionRevisionRef`
 
 **Issue: "I deleted my claim but Azure resources still exist"**
 - Check: `deletionPolicy` is probably set to `Orphan`

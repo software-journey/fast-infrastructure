@@ -16,7 +16,7 @@ This repository provides complete, working examples of:
 
 - **Composite Resource Definitions (XRDs)** - The “menu”
 - **Compositions** - The “recipes”
-- **Claims** - The “orders”
+- **Composite Resources (XRs)** - The “orders” (Crossplane v2 has no Claims)
 - **Provider Configurations** - The “kitchen credentials”
 - **Complete setup scripts** - Opening your own “franchise”
 
@@ -37,26 +37,30 @@ fast-infrastructure/
 │   ├── 03-composition-functions/      # Advanced with functions
 │   └── 04-full-application-stack/     # Complete app infrastructure
 ├── manifests/
+│   ├── kustomization.yaml             # Apply everything (Flux/Kustomize)
+│   ├── functions/
+│   │   ├── function-patch-and-transform.yaml
+│   │   └── function-auto-ready.yaml
 │   ├── xrds/
 │   │   └── xrd-developercombo.yaml    # DeveloperCombo XRD
 │   ├── compositions/
 │   │   ├── composition-azure-basic.yaml
 │   │   ├── composition-azure-secure.yaml
 │   │   └── composition-azure-advanced.yaml
-│   ├── claims/
-│   │   ├── claim-dev.yaml
-│   │   ├── claim-staging.yaml
-│   │   └── claim-prod.yaml
+│   ├── xrs/
+│   │   ├── xr-dev.yaml
+│   │   ├── xr-staging.yaml
+│   │   └── xr-prod.yaml
 │   └── providers/
 │       ├── provider-azure-storage.yaml
-│       ├── provider-azure-sql.yaml
+│       ├── provider-azure-sql.yaml    # (file name kept) installs provider-azure-dbforpostgresql
 │       ├── provider-azure-network.yaml
 │       └── providerconfig.yaml
 ├── scripts/
 │   ├── setup.sh                       # Complete installation script
 │   ├── azure-setup.sh                 # Azure Service Principal setup
 │   ├── install-providers.sh           # Install Azure providers
-│   └── deploy-example.sh              # Deploy example claims
+│   └── deploy-example.sh              # Deploy example orders (XRs)
 └── troubleshooting/
     ├── common-issues.md               # Troubleshooting guide
     └── debugging-tips.md              # Debugging workflows
@@ -99,21 +103,18 @@ cd fast-infrastructure
 ### 3. Install the Menu (XRDs and Compositions)
 
 ```bash
-# Apply the XRD (menu definition)
-kubectl apply -f manifests/xrds/xrd-developercombo.yaml
-
-# Apply the Composition (recipe)
-kubectl apply -f manifests/compositions/composition-azure-basic.yaml
+# Apply everything (functions, providers, XRDs, compositions, example XRs)
+kubectl apply -k manifests/
 ```
 
 ### 4. Place Your First Order
 
 ```bash
 # Deploy a development environment
-kubectl apply -f manifests/claims/claim-dev.yaml
+kubectl apply -f manifests/xrs/xr-dev.yaml
 
 # Check the status
-kubectl get developercombo -n development
+kubectl get developercombos -n development
 
 # Wait for it to be ready
 kubectl wait --for=condition=Ready developercombo/myapp-dev -n development --timeout=10m
@@ -236,10 +237,10 @@ cp manifests/xrds/xrd-developercombo.yaml manifests/xrds/xrd-datastack.yaml
 
 ### Common Issues
 
-**Issue: Claim stays in `READY=False`**
+**Issue: Order (XR) stays in `READY=False`**
 
 ```bash
-# Check the claim status
+# Check the XR status
 kubectl describe developercombo <name> -n <namespace>
 
 # Check provider health
@@ -286,8 +287,7 @@ See `troubleshooting/common-issues.md` for more detailed solutions.
 |-----------------------------------|-------------------------------------|
 |XRD (Composite Resource Definition)|Menu board with available items      |
 |Composition                        |Recipe card in the kitchen           |
-|Claim                              |Customer’s order                     |
-|Composite Resource (XR)            |The completed meal                   |
+|Composite Resource (XR)            |Customer’s order ticket              |
 |Provider                           |Kitchen station (grill, fryer, etc.) |
 |Managed Resource                   |Individual food items (burger, fries)|
 |ProviderConfig                     |Kitchen access credentials           |
@@ -310,6 +310,9 @@ metadata:
   name: customer-acme-corp
   namespace: tenants
 spec:
+  crossplane:
+    compositionRef:
+      name: developercombo.azure.example.com
   size: medium
   includeDatabase: true
   storageSize: "100Gi"
@@ -325,6 +328,9 @@ metadata:
   name: feature-new-auth
   namespace: development
 spec:
+  crossplane:
+    compositionRef:
+      name: developercombo.azure.example.com
   size: small
   includeDatabase: true
   storageSize: "10Gi"

@@ -45,8 +45,8 @@ This document provides a comprehensive breakdown of how fast-food restaurant con
 |------------------|----------------------|-------------|
 | Customer | Developer | Person placing order |
 | Counter Staff | Crossplane API Server | Takes orders |
-| Order Ticket | Claim (XRC) | The actual order |
-| Order Number | Claim Name | Unique identifier |
+| Order Ticket | Composite Resource (XR) | The actual order |
+| Order Number | XR Name | Unique identifier |
 | Register/POS System | Kubernetes API | Order management system |
 | Order Queue | Reconciliation Queue | Pending orders |
 | Kitchen Display | Controller Logs | Order status |
@@ -136,7 +136,7 @@ This document provides a comprehensive breakdown of how fast-food restaurant con
 |------------------|----------------------|-------------|
 | "Machine is broken" | Provider Error | Service unavailable |
 | "Out of stock" | Quota Exceeded | Resource limit hit |
-| "Wrong order" | Misconfigured Claim | User error |
+| "Wrong order" | Misconfigured XR | User error |
 | "Taking too long" | Slow Reconciliation | Performance issue |
 | Order remake | Resource Recreation | Fixing mistakes |
 | Manager call | Support Ticket | Escalation |
@@ -179,7 +179,7 @@ This document provides a comprehensive breakdown of how fast-food restaurant con
 
 ### Special Order
 **Customer:** "Can I get a number 3, but make it large, no drink, extra fries?"  
-**Translation:** Custom Claim with patches:
+**Translation:** Custom XR with patches:
 ```yaml
 spec:
   size: large
@@ -193,7 +193,7 @@ spec:
 **Translation:** `kubectl describe` shows mismatched resources.
 
 **Manager:** "Let me remake that for you."  
-**Translation:** Delete and recreate Claim with correct spec.
+**Translation:** Delete and recreate XR with correct spec.
 
 **Kitchen:** Prepares new meal correctly  
 **Translation:** Providers reconcile to desired state.

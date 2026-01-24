@@ -1,1 +1,14 @@
-TO DO: Create a provider config for Azure
+---
+# ProviderConfig is the "kitchen keyring" that lets providers access Azure.
+# Replace the Secret reference with your own credentials secret.
+apiVersion: azure.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: azure-credentials
+      key: credentials

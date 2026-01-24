@@ -1,7 +1,7 @@
-TO DO: Deploy example for Azure#!/bin/bash
+#!/bin/bash
 set -e
 
-# Deploy Example Claims Script
+# Deploy Example XRs Script (Crossplane v2)
 # Deploys development, staging, and production infrastructure
 
 echo "🚀 Deploying Example Infrastructure"
@@ -19,7 +19,7 @@ NC='\033[0m'
 echo "📋 Checking prerequisites..."
 
 # Check if XRD is installed
-if ! kubectl get xrd xdevelopercombo.example.com &> /dev/null; then
+if ! kubectl get xrd developercombos.example.com &> /dev/null; then
     echo -e "${RED}❌ XRD not found. Please apply it first:${NC}"
     echo "   kubectl apply -f manifests/xrds/xrd-developercombo.yaml"
     exit 1
@@ -47,21 +47,21 @@ fi
 echo -e "${GREEN}✅ Prerequisites OK${NC}"
 echo ""
 
-# Function to deploy and wait for claim
-deploy_claim() {
-    local claim_file=$1
-    local claim_name=$2
+# Function to deploy an XR
+deploy_xr() {
+    local xr_file=$1
+    local xr_name=$2
     local namespace=$3
     
-    echo "📦 Deploying $claim_name in namespace $namespace..."
+    echo "📦 Deploying $xr_name in namespace $namespace..."
     
     # Create namespace if it doesn't exist
     kubectl create namespace $namespace --dry-run=client -o yaml | kubectl apply -f -
     
-    # Apply the claim
-    kubectl apply -f $claim_file
+    # Apply the XR (order ticket)
+    kubectl apply -f "$xr_file"
     
-    echo "   Claim created. Waiting for it to become ready..."
+    echo "   XR created. Waiting for it to become ready..."
     echo "   This typically takes 5-10 minutes for Azure resources..."
 }
 
@@ -113,15 +113,15 @@ echo ""
 
 # Deploy selected environments
 if [ "$deploy_dev" = true ]; then
-    deploy_claim "manifests/claims/claim-dev.yaml" "myapp-dev" "development"
+    deploy_xr "manifests/xrs/xr-dev.yaml" "myapp-dev" "development"
 fi
 
 if [ "$deploy_staging" = true ]; then
-    deploy_claim "manifests/claims/claim-staging.yaml" "myapp-staging" "staging"
+    deploy_xr "manifests/xrs/xr-staging.yaml" "myapp-staging" "staging"
 fi
 
 if [ "$deploy_prod" = true ]; then
-    deploy_claim "manifests/claims/claim-prod.yaml" "myapp-prod" "production"
+    deploy_xr "manifests/xrs/xr-prod.yaml" "myapp-prod" "production"
 fi
 
 echo ""
@@ -132,26 +132,26 @@ echo ""
 
 if [ "$deploy_dev" = true ]; then
     echo "Development:"
-    echo "  kubectl get developercombo -n development"
+    echo "  kubectl get developercombos -n development"
     echo "  kubectl describe developercombo myapp-dev -n development"
 fi
 
 if [ "$deploy_staging" = true ]; then
     echo "Staging:"
-    echo "  kubectl get developercombo -n staging"
+    echo "  kubectl get developercombos -n staging"
     echo "  kubectl describe developercombo myapp-staging -n staging"
 fi
 
 if [ "$deploy_prod" = true ]; then
     echo "Production:"
-    echo "  kubectl get developercombo -n production"
+    echo "  kubectl get developercombos -n production"
     echo "  kubectl describe developercombo myapp-prod -n production"
 fi
 
 echo ""
 echo "All environments:"
-echo "  kubectl get developercombo -A"
-echo "  watch kubectl get developercombo -A"
+echo "  kubectl get developercombos -A"
+echo "  watch kubectl get developercombos -A"
 echo ""
 
 # Offer to watch status
@@ -160,7 +160,7 @@ echo ""
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "Watching status (Ctrl+C to exit)..."
     echo ""
-    watch kubectl get developercombo -A
+    watch kubectl get developercombos -A
 fi
 
 echo ""

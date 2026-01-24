@@ -9,7 +9,7 @@ A practical guide to debugging Crossplane issues like a pro.
 kubectl get providers                    # All should show HEALTHY: True
 kubectl get xrd                         # Your XRDs should be listed
 kubectl get compositions                # Your compositions should be listed
-kubectl get developercombo -A           # Your claims and their status
+kubectl get developercombos -A          # Your orders (XRs) and their status
 ```
 
 If any of these fail, you have your starting point!
@@ -19,27 +19,26 @@ If any of these fail, you have your starting point!
 Crossplane creates a hierarchy of resources:
 
 ```
-Claim (namespace-scoped)
-  └── Composite Resource (cluster-scoped)
-      └── Managed Resources (cluster-scoped)
-          └── Actual Cloud Resources (in Azure)
+DeveloperCombo (XR, namespaced)
+  └── Composed resources (typically managed resources)
+      └── Actual Cloud Resources (in Azure)
 ```
 
-**Debugging flow:** Start at the top (Claim) and work your way down.
+**Debugging flow:** Start at the top (XR) and work your way down.
 
 ## Essential kubectl Commands
 
-### 1. Check Claim Status
+### 1. Check Order (XR) Status
 
 ```bash
-# List all claims
-kubectl get developercombo -A
+# List all orders
+kubectl get developercombos -A
 
 # Detailed information
 kubectl describe developercombo <name> -n <namespace>
 
 # Watch for changes
-watch kubectl get developercombo -A
+watch kubectl get developercombos -A
 
 # Get as YAML to see full status
 kubectl get developercombo <name> -n <namespace> -o yaml
@@ -50,17 +49,11 @@ kubectl get developercombo <name> -n <namespace> -o yaml
 - `Status.Conditions` - shows detailed progress
 - `Status.ResourceRefs` - links to managed resources
 
-### 2. Find the Composite Resource
+### 2. Find Composed / Managed Resources
 
 ```bash
-# Claims reference a Composite Resource (XR)
-kubectl get composite
-
-# Or filter by type
-kubectl get xdevelopercombo
-
-# Describe it
-kubectl describe xdevelopercombo <name>
+# List all managed resources (Crossplane providers)
+kubectl get managed -A
 ```
 
 ### 3. Check Managed Resources
@@ -105,7 +98,7 @@ status:
 ## Common Status Messages Decoded
 
 ### "Waiting for crossplane to be ready"
-**Meaning:** Claim is waiting for the Composite Resource to exist  
+**Meaning:** XR is waiting for prerequisites (XRD/Composition/Providers)  
 **Action:** Check if XRD and Composition are properly installed
 
 ### "Waiting for reconciliation"
@@ -197,7 +190,7 @@ kubectl get composite | grep myapp-dev
 # Output: myapp-dev-xyz123
 
 # 4. Check the composite
-kubectl describe xdevelopercombo myapp-dev-xyz123
+kubectl describe developercombo myapp-dev -n development
 # Look at Status.ResourceRefs
 
 # 5. Check managed resources
@@ -333,7 +326,7 @@ kubectl get pods -n crossplane-system -o yaml | grep -A5 "resources:"
 
 ## Useful Labels and Annotations
 
-Add these to your claims for easier debugging:
+Add these to your orders (XRs) for easier debugging:
 
 ```yaml
 metadata:
@@ -349,8 +342,8 @@ metadata:
 
 Then filter:
 ```bash
-kubectl get developercombo -A -l team=platform
-kubectl get developercombo -A -l environment=dev
+kubectl get developercombos -A -l team=platform
+kubectl get developercombos -A -l environment=dev
 ```
 
 ## Interactive Debugging Tools
@@ -407,8 +400,8 @@ kubectl rollout restart deployment -n crossplane-system <provider-deployment>
 # WARNING: This deletes EVERYTHING Crossplane-related
 # Azure resources may remain orphaned!
 
-# Delete all claims
-kubectl delete developercombo --all -A
+# Delete all orders (XRs)
+kubectl delete developercombos --all -A
 
 # Delete all managed resources (be VERY careful)
 kubectl delete managed --all
@@ -428,9 +421,9 @@ kubectl delete namespace crossplane-system
 5. **Test locally**: Use kind/minikube for composition testing before production
 6. **Enable verbose logging**: When debugging, increase log levels
 
-## Creating Debug Claims
+## Creating Debug Orders (XRs)
 
-Keep a "debug" claim template:
+Keep a "debug" order template:
 
 ```yaml
 apiVersion: example.com/v1alpha1
@@ -451,13 +444,13 @@ spec:
 Add these to your `~/.bashrc` or `~/.zshrc`:
 
 ```bash
-alias kgd='kubectl get developercombo -A'
+alias kgd='kubectl get developercombos -A'
 alias kgm='kubectl get managed'
 alias kgp='kubectl get providers'
 alias kgc='kubectl get compositions'
 alias kdesc='kubectl describe'
 alias klogs='kubectl logs -n crossplane-system'
-alias kwatch='watch kubectl get developercombo -A'
+alias kwatch='watch kubectl get developercombos -A'
 ```
 
 ## When to Ask for Help
@@ -478,16 +471,16 @@ You should reach out to the community when:
 - Provider versions: `kubectl get providers -o yaml`
 - Your XRD (sanitized)
 - Your Composition (sanitized)
-- Your Claim (sanitized)
+- Your XR (sanitized)
 - Relevant logs
 - Error messages
 - What you've tried
 
 ## Pro Tips
 
-1. **Use `--watch` flag**: `kubectl get developercombo -A --watch`
+1. **Use `--watch` flag**: `kubectl get developercombos -A --watch`
 2. **JSON output for scripting**: `kubectl get developercombo -o json | jq`
-3. **Filter by status**: `kubectl get developercombo -A -o json | jq '.items[] | select(.status.ready==false)'`
+3. **Filter by status**: `kubectl get developercombos -A -o json | jq '.items[] | select(.status.ready==false)'`
 4. **Check resource age**: Old resources stuck in "Creating" are suspicious
 5. **Compare working vs broken**: If one environment works, compare manifests
 6. **Check Azure Portal**: Sometimes the issue is on Azure's side, not Crossplane

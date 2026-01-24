@@ -11,7 +11,7 @@ metadata:
 spec:
   compositeTypeRef:
     apiVersion: example.com/v1alpha1
-    kind: XDeveloperCombo
+    kind: DeveloperCombo
   
   mode: Pipeline
   
@@ -343,5 +343,5 @@ spec:
               fmt: "kv-secure-%s"
               type: Format
   
-  publishConnectionDetailsWithStoreConfigRef:
-    name: default
+  # Crossplane v2 doesn't publish XR connection details automatically.
+  # If you need a Secret for app consumption, compose a v1/Secret explicitly.

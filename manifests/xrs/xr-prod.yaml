@@ -11,6 +11,11 @@ metadata:
     app: myapp
     team: platform
 spec:
+  crossplane:
+    # Choose the "secure" recipe
+    compositionRef:
+      name: developercombo.azure.secure.example.com
+
   size: large
   includeDatabase: true
   storageSize: "500Gi"
@@ -24,7 +29,3 @@ spec:
     project: myapp
     criticality: high
     backup: enabled
-  
-  compositionSelector:
-    matchLabels:
-      provider: azure

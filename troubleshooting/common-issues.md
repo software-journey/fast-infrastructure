@@ -3,7 +3,7 @@
 When your infrastructure "order" doesn't arrive as expected, here's how to fix it.
 
 ## Table of Contents
-- [Claim Status Issues](#claim-status-issues)
+- [Order (XR) Status Issues](#order-xr-status-issues)
 - [Provider Problems](#provider-problems)
 - [Azure Credential Issues](#azure-credential-issues)
 - [Resource Creation Failures](#resource-creation-failures)
@@ -12,13 +12,13 @@ When your infrastructure "order" doesn't arrive as expected, here's how to fix i
 
 ---
 
-## Claim Status Issues
+## Order (XR) Status Issues
 
-### Issue: Claim stays in `READY=False` forever
+### Issue: Order (XR) stays in `READY=False` forever
 
 **Symptoms:**
 ```bash
-$ kubectl get developercombo -n development
+$ kubectl get developercombos -n development
 NAME         READY   ENDPOINT   AGE
 myapp-dev    False              5m
 ```
@@ -73,7 +73,7 @@ kubectl describe <resource-type> <resource-name>
 
 ---
 
-### Issue: Claim created but no resources appear
+### Issue: Order (XR) created but no resources appear
 
 **Symptoms:**
 ```bash
@@ -108,7 +108,7 @@ kubectl describe composition developercombo.azure.example.com
 
 3. Check composition selector labels match:
 ```yaml
-# In claim
+# In XR
 compositionSelector:
   matchLabels:
     provider: azure
@@ -263,10 +263,10 @@ Storage account names must be globally unique. The composition generates names, 
 # Check what name was attempted
 kubectl describe storageaccount <resource-name>
 
-# Delete the claim and recreate with a different name
+# Delete the XR and recreate with a different name
 kubectl delete developercombo myapp-dev -n development
-# Edit the claim name
-kubectl apply -f manifests/claims/claim-dev.yaml
+# Edit the XR name
+kubectl apply -f manifests/xrs/xr-dev.yaml
 ```
 
 ---
@@ -336,13 +336,13 @@ kubectl patch deployment crossplane -n crossplane-system -p \
 
 2. Check for API rate limiting in logs
 
-3. Reduce number of concurrent claims
+3. Reduce number of concurrent orders (XRs)
 
 ---
 
 ## Cleanup Problems
 
-### Issue: Cannot delete claim - resources stuck
+### Issue: Cannot delete XR - resources stuck
 
 **Symptoms:**
 ```bash
@@ -391,14 +391,14 @@ az group delete --name <resource-group-name> --yes --no-wait
 ### Issue: Azure resources remain after deletion
 
 **Symptoms:**
-- Claim deleted successfully
+- XR deleted successfully
 - Azure portal still shows resources
 
 **Cause:**
 `deletionPolicy` is set to `Orphan` instead of `Delete`
 
 **Solution:**
-Update the Composition before creating new claims:
+Update the Composition before creating new orders (XRs):
 
 ```yaml
 spec:
@@ -421,9 +421,9 @@ az group delete --name rg-combo-myapp-dev --yes
 
 When something goes wrong, follow this systematic approach:
 
-1. **Check Claim Status:**
+1. **Check XR Status:**
 ```bash
-kubectl get developercombo -A
+kubectl get developercombos -A
 kubectl describe developercombo <name> -n <namespace>
 ```
 
@@ -471,29 +471,29 @@ If you're still stuck:
 4. **Open an issue in this repo:** https://github.com/software-journey/fast-infrastructure/issues
 
 When asking for help, include:
-- Output of `kubectl get developercombo -A`
+- Output of `kubectl get developercombos -A`
 - Output of `kubectl describe developercombo <name>`
 - Output of `kubectl get providers`
 - Relevant logs from Crossplane and providers
-- Your claim YAML (with sensitive data removed)
+- Your XR YAML (with sensitive data removed)
 
 ---
 
 ## Prevention Tips
 
-1. **Always check provider health before creating claims:**
+1. **Always check provider health before creating orders (XRs):**
 ```bash
 kubectl get providers
 # Wait for all to show HEALTHY: True
 ```
 
 2. **Start small:**
-- Test with one claim in dev first
+- Test with one order (XR) in dev first
 - Verify it works before scaling to staging/prod
 
 3. **Use meaningful names:**
 - Avoid generic names that might conflict
-- Include environment in claim names
+- Include environment in XR names
 
 4. **Enable verbose logging during setup:**
 ```bash

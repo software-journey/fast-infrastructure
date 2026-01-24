@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - functions/function-patch-and-transform.yaml
+  - functions/function-auto-ready.yaml
+
+  - providers/provider-azure-network.yaml
+  - providers/provider-azure-storage.yaml
+  - providers/provider-azure-sql.yaml
+  - providers/providerconfig.yaml
+
+  - xrds/xrd-developercombo.yaml
+
+  - compositions/composition-azure-basic.yaml
+  - compositions/composition-azure-advanced.yaml
+  - compositions/composition-azure-secure.yaml
+
+  # Example orders (XRs) for each environment
+  - xrs/xr-dev.yaml
+  - xrs/xr-staging.yaml
+  - xrs/xr-prod.yaml

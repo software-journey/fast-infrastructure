@@ -1,19 +1,20 @@
 ---
-apiVersion: apiextensions.crossplane.io/v1
+apiVersion: apiextensions.crossplane.io/v2
 kind: CompositeResourceDefinition
 metadata:
-  name: xdevelopercombo.example.com
+  # Must be: <plural>.<group>
+  name: developercombos.example.com
   labels:
     app: fast-infrastructure
     component: xrd
 spec:
+  # Crossplane v2 defaults XRs to namespaced scope.
+  scope: Namespaced
   group: example.com
   names:
-    kind: XDeveloperCombo
-    plural: xdevelopercombo
-  claimNames:
+    # In Crossplane v2 there are no Claims. Developers create this XR directly.
     kind: DeveloperCombo
-    plural: developercombo
+    plural: developercombos
   
   versions:
   - name: v1alpha1
@@ -158,8 +159,4 @@ spec:
   
   # Default composition reference
   defaultCompositionRef:
-    name: developercombo.azure.example.com
-  
-  # Enforce composition selection
-  enforcedCompositionRef:
     name: developercombo.azure.example.com

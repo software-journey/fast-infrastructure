@@ -1,6 +1,5 @@
 ---
 # Development Environment - The "Kids Meal"
-# Small resources for development and testing
 apiVersion: example.com/v1alpha1
 kind: DeveloperCombo
 metadata:
@@ -10,6 +9,9 @@ metadata:
     environment: development
     app: myapp
 spec:
+  crossplane:
+    compositionRef:
+      name: developercombo.azure.example.com
   size: small
   includeDatabase: true
   storageSize: "10Gi"
@@ -20,13 +22,8 @@ spec:
     environment: dev
     cost-center: engineering
     team: platform
-  
-  compositionSelector:
-    matchLabels:
-      provider: azure
 ---
 # Staging Environment - The "Regular Meal"
-# Medium resources for pre-production testing
 apiVersion: example.com/v1alpha1
 kind: DeveloperCombo
 metadata:
@@ -36,6 +33,9 @@ metadata:
     environment: staging
     app: myapp
 spec:
+  crossplane:
+    compositionRef:
+      name: developercombo.azure.advanced.example.com
   size: medium
   includeDatabase: true
   storageSize: "50Gi"
@@ -46,13 +46,8 @@ spec:
     environment: staging
     cost-center: engineering
     team: platform
-  
-  compositionSelector:
-    matchLabels:
-      provider: azure
 ---
 # Production Environment - The "Super Size"
-# Large resources for production workloads
 apiVersion: example.com/v1alpha1
 kind: DeveloperCombo
 metadata:
@@ -62,6 +57,9 @@ metadata:
     environment: production
     app: myapp
 spec:
+  crossplane:
+    compositionRef:
+      name: developercombo.azure.secure.example.com
   size: large
   includeDatabase: true
   storageSize: "500Gi"
@@ -73,7 +71,3 @@ spec:
     cost-center: engineering
     team: platform
     criticality: high
-  
-  compositionSelector:
-    matchLabels:
-      provider: azure

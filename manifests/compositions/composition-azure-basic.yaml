@@ -10,7 +10,7 @@ metadata:
 spec:
   compositeTypeRef:
     apiVersion: example.com/v1alpha1
-    kind: XDeveloperCombo
+    kind: DeveloperCombo
   
   mode: Pipeline
   
@@ -215,16 +215,6 @@ spec:
         - type: MatchString
           fieldPath: status.atProvider.state
           matchString: "Ready"
-        connectionDetails:
-        - type: FromConnectionSecretKey
-          name: username
-          fromConnectionSecretKey: username
-        - type: FromConnectionSecretKey
-          name: password
-          fromConnectionSecretKey: password
-        - type: FromFieldPath
-          name: endpoint
-          fromFieldPath: status.atProvider.fqdn
       
       # The "Fries" - Azure Storage Account
       - name: storage
@@ -282,6 +272,5 @@ spec:
           fieldPath: status.atProvider.provisioningState
           matchString: "Succeeded"
   
-  # Publish connection details
-  publishConnectionDetailsWithStoreConfigRef:
-    name: default
+  # Crossplane v2 doesn't publish XR connection details automatically.
+  # If you need a Secret for app consumption, compose a v1/Secret explicitly.
